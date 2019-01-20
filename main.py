@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-# Python Backup Script by NicoF2000 - v0.1
-
 from colorama import init, Fore
 from argparse import ArgumentParser
 from time import time

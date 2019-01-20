@@ -2,7 +2,7 @@
 
 PyBackup is a backup script for docker environments
 
-### Arguments
+## Arguments
 |    Argument    |                  Description                  | Default      |
 |:--------------:|:---------------------------------------------:|--------------|
 | -v, --verbose  | Enable verbose output                         | False        |
@@ -11,10 +11,9 @@ PyBackup is a backup script for docker environments
 | -d, --database | Create a backup of the MySQL/MariaDB database | False        |
 | -f, --files    | Create a file backup of the configured paths  | False        |
 | --gitlab       | Create a backup of the GitLab repositories    | False        |
-|                |                                               |              |
+|                |                                               |              ||
 
-### Configuration
-
+## Configuration
 | Parameter               | Description                                                   | Default              |
 |-------------------------|---------------------------------------------------------------|----------------------|
 | backup_dir              | Location where backups get stored.                            | /var/backups/system/ |
@@ -24,9 +23,9 @@ PyBackup is a backup script for docker environments
 | database/list           | Databases that should get backed up                           | [mysql]              |
 | gitlab/container_name   | Container name of the GitLab container                        | root_gitlab_1        |
 | files/paths             | Paths that should be backed up                                |                      |
-| files/checksums         | Checksums that should be created for the file backup archives |                      |
+| files/checksums         | Checksums that should be created for the file backup archives |                      ||
 
-#### Checksums
+### Checksums
 * md5
 * sha1
 * sha224
