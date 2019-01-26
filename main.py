@@ -33,6 +33,7 @@ def convert_size(num):
 
 # convert seconds to next unit
 def convert_time(seconds):
+    # humanfriendly.format_timespan(seconds)
     days, remainder = divmod(seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -267,7 +268,7 @@ if __name__ == '__main__':
         parser.print_help()
         exit(0)
 
-    CONFIG_FILE = args.get('config') or '.config.json'
+    CONFIG_FILE = args.get('config')[0] or '.config.json'
     if not os.path.exists(CONFIG_FILE):
         print_verbose(f"{CONFIG_FILE} not found!")
         exit(1)
@@ -279,4 +280,4 @@ if __name__ == '__main__':
     START = time()
 
     # parse config file and execute backups
-    main(json.loads(open(CONFIG_FILE).read()))
+    # main(json.loads(open(CONFIG_FILE).read()))
