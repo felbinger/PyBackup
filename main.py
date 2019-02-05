@@ -98,8 +98,8 @@ def docker_db_backup(container, username, password, database):
         print_verbose(f'- Status Code: {res.exit_code}')
         print_verbose(f'- Stdout: {res.output.decode("utf-8")}')
 
-    with open(path, 'w') as f:
-        f.write(res.output.decode("utf-8"))
+    with open(path, 'wb') as f:
+        f.write(res.output)
 
     return [
         database,
@@ -145,10 +145,13 @@ def file_backup(path):
             target_fd.add(path, arcname=base)
 
         # create checksum's
-        for method in check_sums:
-            with open(f'{BACKUP_DIR}/{method}sum.txt', 'a') as f:
-                val = getattr(hashlib, method)(open(f'{filename}', 'rb').read()).hexdigest()
-                f.write(f'{val}\t{filename}\n')
+        if check_check_sums(check_sums):
+            for method in check_sums:
+                with open(f'{BACKUP_DIR}/{method}sum.txt', 'a') as f:
+                    val = getattr(hashlib, method)(open(f'{filename}', 'rb').read()).hexdigest()
+                    f.write(f'{val}\t{filename}\n')
+        else:
+            print("Config Error: Invalid checksum methods, skipping...")
 
         return [
             path,
@@ -156,6 +159,15 @@ def file_backup(path):
             convert_size(os.path.getsize(filename)),
             f'{Fore.GREEN}OK{Fore.RESET}' if os.path.exists(filename) else f'{Fore.RED}Failed{Fore.RESET}'
         ]
+
+
+# check if the check sums from the config file are all valid method names from the hashlib module
+def check_check_sums(lst):
+    allow = ("md5", "sha1", "sha224", "sha384", "sha256", "sha512")
+    ret = not any(sum not in allow for sum in lst)
+    if not ret:
+        print_verbose(f"Invalid methods: {', '.join(set(lst).difference(set(allow)))}")
+    return ret
 
 
 def main(config):
@@ -172,70 +184,71 @@ def main(config):
         print_verbose(f"Creating backup directory: ({BACKUP_DIR})")
         os.makedirs(BACKUP_DIR)
 
-    if DB_BACKUP:
-        db_container_name = config.get('database').get('container_name') or 'root_db_1'
-        db_username = config.get('database').get('username') or 'backup'
-        db_password = config.get('database').get('password') or 'default_password'
-        databases = config.get('database').get('list') or ['mysql']
+    for job in jobs:
+        if job == 'database':
+            db_container_name = config.get('database').get('container_name') or 'root_db_1'
+            db_username = config.get('database').get('username') or 'backup'
+            db_password = config.get('database').get('password') or 'default_password'
+            databases = config.get('database').get('list') or ['mysql']
 
-        container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
-        data = list()
+            container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
+            data = list()
 
-        for database in databases:
-            data.append(docker_db_backup(container, db_username, db_password, database))
+            for database in databases:
+                data.append(docker_db_backup(container, db_username, db_password, database))
 
-        if data:
-            # create table
-            table = PrettyTable()
-            table.title = "Database Backup Status"
-            table.field_names = ["Database", "Size", "Status"]
-            for row in data:
-                table.add_row(row)
-            table.align['Database'] = 'l'
-            table.align['Size'] = 'r'
-            table.sortby = 'Database'
-            print(table)
-        else:
-            print("Skipped database backup - nothing to do!")
+            if data:
+                # create table
+                table = PrettyTable()
+                table.title = "Database Backup Status"
+                table.field_names = ["Database", "Size", "Status"]
+                for row in data:
+                    table.add_row(row)
+                table.align['Database'] = 'l'
+                table.align['Size'] = 'r'
+                table.sortby = 'Database'
+                print(table)
+            else:
+                print("Skipped database backup - nothing to do!")
 
-    if GITLAB_BACKUP:
-        print("GitLab repository backup has been started!")
-        git_container = config.get('gitlab').get('container_name') or 'root_gitlab_1'
-        container = list(filter(lambda c: c.name == git_container, docker_env().containers.list()))[0]
+        if job == 'files':
+            paths = config.get('files').get('paths') or list()
 
-        res = container.exec_run('gitlab-rake gitlab:backup:create')
+            global check_sums
+            check_sums = config.get('files').get('checksums') or list()
 
-        if res.exit_code == 0:
-            print(f'{Fore.GREEN}GitLab repository backup complete!{Fore.RESET}')
-        else:
-            print(f'{Fore.RED}GitLab repository backup failed.{Fore.RESET}')
-            print_verbose(f'Status Code: {res.status_code}')
-            print_verbose(f'Stdout: {res.output}')
+            data = list()
 
-    if FILE_BACKUP:
-        paths = config.get('files').get('paths') or list()
+            for path in paths:
+                data.append(file_backup(path))
 
-        global check_sums
-        check_sums = config.get('files').get('checksums') or list()
+            if data:
+                # create table
+                table = PrettyTable()
+                table.title = "File Backup Status"
+                table.field_names = ["Path", "Original Size", "Compressed Size", "Status"]
+                for row in data:
+                    table.add_row(row)
+                table.align['Path'] = 'l'
+                table.align['Original Size'] = 'r'
+                table.align['Compressed Size'] = 'r'
+                print(table)
+            else:
+                print("Skipped file backup - nothing to do!")
 
-        data = list()
+        if job == 'gitlab':
+            print("GitLab repository backup has been started!")
+            git_container = config.get('gitlab').get('container_name') or 'root_gitlab_1'
+            container = list(filter(lambda c: c.name == git_container, docker_env().containers.list()))[0]
 
-        for path in paths:
-            data.append(file_backup(path))
+            res = container.exec_run('gitlab-rake gitlab:backup:create')
 
-        if data:
-            # create table
-            table = PrettyTable()
-            table.title = "File Backup Status"
-            table.field_names = ["Path", "Original Size", "Compressed Size", "Status"]
-            for row in data:
-                table.add_row(row)
-            table.align['Path'] = 'l'
-            table.align['Original Size'] = 'r'
-            table.align['Compressed Size'] = 'r'
-            print(table)
-        else:
-            print("Skipped file backup - nothing to do!")
+            if res.exit_code == 0:
+                print(f'{Fore.GREEN}GitLab repository backup complete!{Fore.RESET}')
+            else:
+                print(f'{Fore.RED}GitLab repository backup failed.{Fore.RESET}')
+                print_verbose(f'Status Code: {res.status_code}')
+                print_verbose(f'Stdout: {res.output}')
 
     if int(time() - START) > 5:
         print(convert_time(int(time() - START)))
@@ -256,28 +269,50 @@ if __name__ == '__main__':
     # get arguments
     args = vars(parser.parse_args())
     VERBOSE = args.get('verbose') or False
-    FILE_BACKUP = args.get('files')
-    DB_BACKUP = args.get('database')
-    GITLAB_BACKUP = args.get('gitlab')
-    if args.get('all'):
-        FILE_BACKUP = True
-        GITLAB_BACKUP = True
-        DB_BACKUP = True
 
-    if not FILE_BACKUP and not GITLAB_BACKUP and not DB_BACKUP:
+    jobs = list()
+    if args.get('all'):
+        jobs.append('database')
+        jobs.append('gitlab')
+        jobs.append('files')
+    else:
+        if args.get('database'):
+            jobs.append('database')
+        if args.get('gitlab'):
+            jobs.append('gitlab')
+        if args.get('files'):
+            jobs.append('files')
+
+    # check if jobs have been selected
+    if not jobs:
         parser.print_help()
         exit(0)
 
-    CONFIG_FILE = args.get('config')[0] or '.config.json'
+    CONFIG_FILE = args.get('config')[0] if args.get('config') else '.config.json'
+
+    if not os.path.isfile(CONFIG_FILE):
+        print(f"{CONFIG_FILE} is not a file!")
+        exit(1)
+
     if not os.path.exists(CONFIG_FILE):
-        print_verbose(f"{CONFIG_FILE} not found!")
+        print(f"{CONFIG_FILE} not found!")
         exit(1)
 
     if os.geteuid() != 0:
-        print("You need to have root privileges to run this script!")
+        # print_verbose("elevating privileges...")
+        # status = subprocess.check_call("sudo -v -p '[sudo] password for %u: '", shell=True)
+        # if status != 0:
+        # print("You need to have root privileges to run this script!")
+        # exit(1)
+        print("You need to have elevated privileges to run this script!")
         exit(1)
 
     START = time()
 
-    # parse config file and execute backups
-    # main(json.loads(open(CONFIG_FILE).read()))
+    try:
+        global conf
+        conf = json.loads(open(CONFIG_FILE).read())
+    except ValueError:
+        print(f'{CONFIG_FILE} does not contain valid json.')
+
+    main(conf)
