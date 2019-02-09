@@ -68,7 +68,8 @@ def main(config):
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
-    ssh.connect(hostname, port=port, username=username, key_filename=key_file)  # does not work without passphrase ???
+    # TODO ssh connection should fail without gui -> how to handle passphrase?
+    ssh.connect(hostname, port=port, username=username, key_filename=key_file)
 
     sftp = ssh.open_sftp()
 

@@ -7,10 +7,9 @@ from datetime import date, time, datetime, timedelta
 
 BACKUP_CONFIG = "/home/admin/tools/.config.json"
 
-# the cronjob will start the backup at 3 o'clock (am)
-# we know that the average backup duration is 20 minutes
-# start the check at 3:20 am
-START_CHECK = (3,20)
+# The cronjob will start the backup at 3 o'clock (am). The average backup duration is 20 minutes.
+# Start the check at 3:20 am
+START_CHECK = (3, 20)
 
 
 def get_backup_path(path):
@@ -54,7 +53,7 @@ def main():
         if config.get("files").get("paths"):
             for sum in config.get("files").get("checksums"):
                 if f'{sum}sum.txt' not in files:
-                    print(f"Warning: Missing {sum} checksums for the file backup!")
+                    print(f"Warning: Missing {sum} check sums for the file backup!")
                     exit(1)
 
         print('Ok!')
