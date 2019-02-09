@@ -1,0 +1,11 @@
+{
+    "local_location": "",
+    "server_location": "",
+    "server": {
+        "hostname": "",
+        "port": "",
+        "username": "",
+        "keyfile": "",
+        "passphrase": ""
+    }
+}

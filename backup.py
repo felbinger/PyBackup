@@ -148,7 +148,7 @@ def file_backup(path):
         if check_check_sums(check_sums):
             for method in check_sums:
                 with open(f'{BACKUP_DIR}/{method}sum.txt', 'a') as f:
-                    val = getattr(hashlib, method)(open(f'{filename}', 'rb').read()).hexdigest()
+                    val = getattr(hashlib, method)(open(filename, 'rb').read()).hexdigest()
                     f.write(f'{val}\t{filename}\n')
         else:
             print("Config Error: Invalid checksum methods, skipping...")
@@ -314,5 +314,6 @@ if __name__ == '__main__':
         conf = json.loads(open(CONFIG_FILE).read())
     except ValueError:
         print(f'{CONFIG_FILE} does not contain valid json.')
+        exit(1)
 
     main(conf)
