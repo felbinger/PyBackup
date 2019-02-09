@@ -68,12 +68,13 @@ def main(config):
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
-    # TODO ssh connection should fail without gui -> how to handle passphrase?
+    # If the private key is encrypted (what he should be), the connection should fail
+    # TODO How to handle private key passphrase?
     ssh.connect(hostname, port=port, username=username, key_filename=key_file)
 
     sftp = ssh.open_sftp()
 
-    for filename in ssh.exec_command(f"ls {server_path}")[1].read().decode().split("\n"):
+    for filename in list(filter(None, ssh.exec_command(f"ls {server_path}")[1].read().decode().split("\n"))):
         print_verbose(f'- {server_path}/{filename} (remote) => {local_path}/{filename} (local)')
         sftp.get(f'{server_path}/{filename}', f'{local_path}/{filename}')
 
@@ -85,6 +86,8 @@ def main(config):
         with open(f'{local_path}/{best_available_method}sum.txt', 'r') as check_sum_file:
             for entry in check_sum_file.readlines():
                 checksum, filepath = entry.split("\t")
+                if not os.path.isfile(filepath):
+                    print_verbose(f"There is a check sum for {os.path.basename(filepath)}, but the file does not exist")
                 if checksum != getattr(hashlib, best_available_method)(open(filepath, 'rb').read()).hexdigest():
                     print(f"Checksum of {os.path.basename(filepath)} is not correct!")
     else:
