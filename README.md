@@ -98,13 +98,15 @@ The configuration file (by default it's `.config.json` does contain the followin
 
 | Parameter               | Description                                                   | Default                 |
 |-------------------------|---------------------------------------------------------------|-------------------------|
-| local_location          | Location where backups get stored.                            | /var/backups/{hostname} |
-| server_location         | Container name of the MySQL/MariaDB container                 | /var/backups/           |
-| server/hostname         | Username for backup mysql user                                |                         |
-| server/username         | Password for backup mysql user                                | backup                  |
-| server/keyfile          | Databases that should get backed up                           |                         |
-| server/passphrase       | Container name of the GitLab container                        |                         |
-| server/password         | Paths that should be backed up                                |                         ||
+| local_location          | Location where local copy of the backup should be stored.     | /var/backups/{hostname} |
+| server_location         | Location of the backup on the server                          | /var/backups/           |
+| server/hostname         | Hostname/IP address of the server                             |                         |
+| server/username         | Username for the User Account to copy the backup using scp.   | backup                  |
+| server/keyfile          | Private SSH key that should be used to authenticate           |                         |
+| server/passphrase       | Password for the private key                                  |                         |
+| server/password         | if you want to authenticate without ssh keys, add the password|                         ||
+
+You can eighter use the Keyfile (and if the keyfile is secured using a passphrase) to authenticate, or the password for the user account. Make sure that the keyfile is added to the authorized hosts or that PasswordAuthentication is still enabled on your ssh server. 
 
 Example:
 ```
