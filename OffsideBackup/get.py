@@ -12,17 +12,14 @@ import hashlib
 
 CONFIG_FILE = ''
 
-# The script will get the backup of yesterday if the time is before 3:30 am
-# -> The cronjob will start the backup at 3 o'clock (am)
-# -> The average backup duration is 20 minutes - just to be sure add 10 more
-START_CHECK = (3, 30)
-
 
 def print_verbose(msg):
     if VERBOSE:
         print(f"[{str(datetime.now().strftime('%H:%M:%S'))}] {msg}")
 
 
+"""
+# deprecated...
 def get_date():
     # get the current date
     current_date = date.today()
@@ -34,6 +31,7 @@ def get_date():
         current_date -= timedelta(1)
 
     return str(current_date)
+"""
 
 
 def main(config):
@@ -50,7 +48,6 @@ def main(config):
     local_path = config.get('local_location') or '/var/backups/{hostname}/'
     if not local_path.endswith('/'):
         local_path += "/"
-        local_path += get_date()
 
     # create local directory for the backup
     if not os.path.exists(local_path):
@@ -60,19 +57,42 @@ def main(config):
     server_path = config.get('server_location') or '/var/backups/'
     if not server_path.endswith('/'):
         server_path += "/"
-    server_path += get_date()
 
     print_verbose(f'Downloading backup from {username}@{hostname}:{port} with {key_file}')
-    print_verbose(f'{server_path} (remote) => {local_path} (local)')
 
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
-    # If the private key is encrypted (what he should be), the connection should fail
-    # TODO How to handle private key passphrase?
     ssh.connect(hostname, port=port, username=username, key_filename=key_file)
 
+    # list existing backups (from stdout)
+    existing_backups = ssh.exec_command("ls /home/backups")[1].readlines()
+
+    # remove \n from list entries
+    existing_backups = list(map(lambda s: s.strip(), existing_backups))
+
+    # sort existing backups and get the directory name of the latest
+    backup_date = sorted(existing_backups, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))[-1]
+
     sftp = ssh.open_sftp()
+
+    # local directory where the backup should be stored
+    local_path = config.get('local_location') or '/var/backups/{hostname}/'
+    if not local_path.endswith('/'):
+        local_path += "/"
+
+    local_path += backup_date
+
+    # create local directory for the backup
+    if not os.path.exists(local_path):
+        os.mkdir(local_path)
+
+    # backup location on the server (remote path)
+    server_path = config.get('server_location') or '/var/backups/'
+    if not server_path.endswith('/'):
+        server_path += "/"
+
+    server_path += backup_date
 
     for filename in list(filter(None, ssh.exec_command(f"ls {server_path}")[1].read().decode().split("\n"))):
         print_verbose(f'- {server_path}/{filename} (remote) => {local_path}/{filename} (local)')
