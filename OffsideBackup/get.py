@@ -18,22 +18,6 @@ def print_verbose(msg):
         print(f"[{str(datetime.now().strftime('%H:%M:%S'))}] {msg}")
 
 
-"""
-# deprecated...
-def get_date():
-    # get the current date
-    current_date = date.today()
-
-    # check if the script has been executed before the backup job has
-    # been started / before it can be completed (defined as START_CHECK)
-    if datetime.now().time() < time(*START_CHECK):
-        # check the backup of yesterday
-        current_date -= timedelta(1)
-
-    return str(current_date)
-"""
-
-
 def main(config):
     hostname = config.get("server").get("hostname")
     port = config.get("server").get("port") or 22
@@ -43,20 +27,6 @@ def main(config):
     if not hostname or not key_file:
         print(f"Invalid configuration! Check: {CONFIG_FILE}")
         exit(1)
-
-    # local directory where the backup should be stored
-    local_path = config.get('local_location') or '/var/backups/{hostname}/'
-    if not local_path.endswith('/'):
-        local_path += "/"
-
-    # create local directory for the backup
-    if not os.path.exists(local_path):
-        os.mkdir(local_path)
-
-    # backup location on the server (remote path)
-    server_path = config.get('server_location') or '/var/backups/'
-    if not server_path.endswith('/'):
-        server_path += "/"
 
     print_verbose(f'Downloading backup from {username}@{hostname}:{port} with {key_file}')
 
