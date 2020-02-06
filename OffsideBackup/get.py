@@ -76,10 +76,12 @@ def main(config):
         with open(f'{local_path}/{best_available_method}sum.txt', 'r') as check_sum_file:
             for entry in check_sum_file.readlines():
                 checksum, filepath = entry.split("\t")
-                if not os.path.isfile(filepath):
-                    print_verbose(f"There is a check sum for {os.path.basename(filepath)}, but the file does not exist")
-                if checksum != getattr(hashlib, best_available_method)(open(filepath, 'rb').read()).hexdigest():
-                    print(f"Checksum of {os.path.basename(filepath)} is not correct!")
+                filepath = os.path.basename(filepath.strip("\n"))
+                local_filepath = f'{local_path}/{os.path.basename(filepath.strip("\n"))}'
+                if not os.path.isdir(local_filepath):
+                    print_verbose(f"There is a check sum for {filepath}, but the file does not exist")
+                if checksum != getattr(hashlib, best_available_method)(open(local_filepath, 'rb').read()).hexdigest():
+                    print(f"Checksum of {filepath} is not correct!")
     else:
         print_verbose("Unable to find check sums, skipping integrity check!")
 
