@@ -13,7 +13,7 @@ class Config:
         self.local_location = json.get("local_location")
         self.server_location = json.get("server_location")
         ssh_values: dict = json.get("server")
-        if not ssh_values:
+        if not isinstance(ssh_values, dict):
             print("Error: SSH values are not properly initialized! Exiting.")
             exit(1)
         self.ssh_hostname = ssh_values.get("hostname")
@@ -22,7 +22,7 @@ class Config:
         self.ssh_keyfile = ssh_values.get("keyfile")
         self.ssh_passphrase = ssh_values.get("passphrase")
         time_values: dict = json.get("time")
-        if not time_values:
+        if not isinstance(time_values, dict):
             print("Warning: Time values are not properly initialized! Using default value: 00:00")
             self.time_hour = 0
             self.time_minute = 0

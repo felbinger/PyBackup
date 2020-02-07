@@ -11,16 +11,24 @@ class Config:
     def __init__(self, json: dict):
         self.backup_dir = json.get("backup_dir")
         database_values: dict = json.get("database")
-        if not database_values:
+        if not isinstance(database_values, dict):
             print("Error: Database values are not properly initialized! Exiting.")
             exit(1)
         self.database_conatainer_name = database_values.get("onatainer_name")
         self.database_password = database_values.get("password")
         self.database_username = database_values.get("username")
         self.database_list = database_values.get("list")
-        self.gitlab_container_name = json.get("gitlab").get("container_name")
-        self.file_path_list = json.get("files").get("paths")
-        self.checksums = json.get("files").get("checksums")
+        gitlab_values: dict = json.get("gitlab")
+        if not isinstance(gitlab_values, dict):
+            print("Error: Gitlab values are not properly initialized! Exiting.")
+            exit(1)
+        self.gitlab_container_name = gitlab_values.get("container_name")
+        file_values: dict = json.get("files")
+        if not isinstance(file_values, dict):
+            print("Error: File values are not properly initialized! Exiting.")
+            exit(1)
+        self.file_path_list = file_values.get("paths")
+        self.checksums = file_values.get("checksums")
 
     def verify_settings(self):
         if self.backup_dir in [None, ""]:
