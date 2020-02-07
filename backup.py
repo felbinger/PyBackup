@@ -249,7 +249,7 @@ if __name__ == '__main__':
     init()
 
     parser = ArgumentParser()
-    parser.add_argument('-g', '--verbose', help='verbose output', action="store_true")
+    parser.add_argument('-v', '--verbose', help='verbose output', action="store_true")
     parser.add_argument('-c', '--config', help='config file', nargs=1)
     parser.add_argument('-a', '--all', help='backup everything', action="store_true")
     parser.add_argument('-d', '--database', help='backup databases', action="store_true")
