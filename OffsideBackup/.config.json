@@ -7,5 +7,9 @@
         "username": "",
         "keyfile": "",
         "passphrase": ""
+    },
+    "time": {
+        "hour": 0,
+        "minute": 0
     }
 }
