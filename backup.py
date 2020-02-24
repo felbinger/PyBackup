@@ -1,27 +1,29 @@
 #!/usr/bin/python3
 
-from colorama import init, Fore
+import hashlib
+import json
+import os
 from argparse import ArgumentParser
-from time import time
 from datetime import datetime
 from shutil import copyfile
-from prettytable import PrettyTable
-from docker import from_env as docker_env
 from tarfile import open as tar_open
-import os
-import json
-import hashlib
+from time import time
 
-CONFIG_FILE = ''
+from colorama import init, Fore
+from docker import from_env as docker_env
+from docker.models.containers import Container
+from prettytable import PrettyTable
+
+from config import Config, create_from_json
 
 
-def print_verbose(msg):
+def print_verbose(msg: str) -> None:
     if VERBOSE:
-        print(f"[{str(datetime.now().strftime('%H:%M:%S'))}] {msg}")
+        print(f"[{str(datetime.utcnow().strftime('%H:%M:%S'))}] {msg}")
 
 
 # convert bytes to next unit
-def convert_size(num):
+def convert_size(num: float) -> str:
     for unit in ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB'):
         if abs(num) < 1000.0:
             # return "%3.2f %s" % (num, unit)
@@ -32,7 +34,7 @@ def convert_size(num):
 
 
 # convert seconds to next unit
-def convert_time(seconds):
+def convert_time(seconds: int) -> str:
     # humanfriendly.format_timespan(seconds)
     days, remainder = divmod(seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
@@ -41,31 +43,20 @@ def convert_time(seconds):
     ret = 'elapsed time: '
 
     if days:
-        ret += f'{days} days' if days > 1 else '1 day'
-        if hours:
-            ret += f', {hours} hours' if hours > 1 else ', 1 hour'
-            if minutes:
-                ret += f', {minutes} minutes' if minutes > 1 else ', 1 minute'
-                if seconds:
-                    ret += f' and {seconds} seconds' if seconds > 1 else ' and 1 second'
-    elif hours:
-        ret += f'{hours} hours' if hours > 1 else '1 hour'
-        if minutes:
-            ret += f', {minutes} minutes' if minutes > 1 else ', 1 minute'
-            if seconds:
-                ret += f' and {seconds} seconds' if seconds > 1 else ' and 1 second'
-    elif minutes:
-        ret += f'{minutes} minutes' if minutes > 1 else '1 minute'
-        if seconds:
-            ret += f' and {seconds} seconds' if seconds > 1 else ' and 1 second'
-    else:
+        ret += f'{days} days, ' if days > 1 else '1 day, '
+    if hours:
+        ret += f'{hours} hours, ' if hours > 1 else '1 hour, '
+    if minutes:
+        ret += f'{minutes} minutes, ' if minutes > 1 else '1 minute, '
+    if seconds:
         ret += f'{seconds} seconds' if seconds > 1 else '1 second'
 
-    return ret
+    li = ret.rstrip(", ").rsplit(",", 1)
+    return " and".join(li)
 
 
 # size of a specific path including all subdirectories
-def sizeof(start):
+def sizeof(start: str) -> str:
     if os.path.isfile(start):
         return convert_size(os.path.getsize(start))
     size = 0
@@ -77,9 +68,9 @@ def sizeof(start):
     return convert_size(size)
 
 
-def docker_db_backup(container, username, password, database):
+def docker_db_backup(container: Container, username: str, password: str, database: str, backup_dir: str) -> list:
     # path where the backup should be stored
-    path = f'{BACKUP_DIR}/{database}.sql'
+    path: str = f'{backup_dir}/{database}.sql'
     # check if the backup of the database does already exist
     if os.path.exists(path):
         print_verbose(f'Backup of {database} database has been skipped!')
@@ -109,7 +100,7 @@ def docker_db_backup(container, username, password, database):
     ]
 
 
-def file_backup(path):
+def file_backup(path: str, backup_dir: str, checksums: list):
     # remove slash at the end of the path
     if path.endswith("/"):
         path = path[:-1]
@@ -117,7 +108,7 @@ def file_backup(path):
     print_verbose(f'Backup of {path} has been started!')
 
     base = os.path.basename(path)
-    filename = f'{BACKUP_DIR}/{base}.tar.gz'
+    filename = f'{backup_dir}/{base}.tar.gz'
 
     # check if the backup is already done
     if os.path.exists(filename):
@@ -145,9 +136,9 @@ def file_backup(path):
             target_fd.add(path, arcname=base)
 
         # create checksum's
-        if check_check_sums(check_sums):
-            for method in check_sums:
-                with open(f'{BACKUP_DIR}/{method}sum.txt', 'a') as f:
+        if check_check_sums(checksums):
+            for method in checksums:
+                with open(f'{backup_dir}/{method}sum.txt', 'a') as f:
                     val = getattr(hashlib, method)(open(filename, 'rb').read()).hexdigest()
                     f.write(f'{val}\t{filename}\n')
         else:
@@ -162,40 +153,39 @@ def file_backup(path):
 
 
 # check if the check sums from the config file are all valid method names from the hashlib module
-def check_check_sums(lst):
-    allow = ("md5", "sha1", "sha224", "sha384", "sha256", "sha512")
-    ret = not any(sum not in allow for sum in lst)
+def check_check_sums(lst: list):
+    allow: tuple = ("md5", "sha1", "sha224", "sha384", "sha256", "sha512")
+    ret: bool = not any(sum not in allow for sum in lst)
     if not ret:
         print_verbose(f"Invalid methods: {', '.join(set(lst).difference(set(allow)))}")
     return ret
 
 
-def main(config):
-    global BACKUP_DIR
-    BACKUP_DIR = config.get('backup_dir') or '/var/backups/system/'
-
+def main(config: Config):
     # check if the backup directory exists
-    if not BACKUP_DIR.endswith('/'):
-        BACKUP_DIR += "/"
+    if not config.backup_dir.endswith('/'):
+        config.backup_dir += "/"
 
-    BACKUP_DIR += str(datetime.now().strftime("%Y-%m-%d"))  # %H-%M
+    config.backup_dir += str(datetime.utcnow().strftime("%Y-%m-%d"))  # %H-%M
 
-    if not os.path.exists(BACKUP_DIR):
-        print_verbose(f"Creating backup directory: ({BACKUP_DIR})")
-        os.makedirs(BACKUP_DIR)
+    if not os.path.exists(config.backup_dir):
+        print_verbose(f"Creating backup directory: ({config.backup_dir})")
+        os.makedirs(config.backup_dir)
 
     for job in jobs:
         if job == 'database':
-            db_container_name = config.get('database').get('container_name') or 'root_db_1'
-            db_username = config.get('database').get('username') or 'backup'
-            db_password = config.get('database').get('password') or 'default_password'
-            databases = config.get('database').get('list') or ['mysql']
-
-            container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
+            try:
+                container = list(
+                    filter(lambda c: c.name == config.database_conatainer_name, docker_env().containers.list())
+                )[0]
+            except IndexError:
+                print_verbose("Warning: Database Container not found!")
+                continue
             data = list()
 
-            for database in databases:
-                data.append(docker_db_backup(container, db_username, db_password, database))
+            for database in config.database_list:
+                data.append(docker_db_backup(container, config.database_username, config.database_password, database,
+                                             config.backup_dir))
 
             if data:
                 # create table
@@ -212,15 +202,10 @@ def main(config):
                 print("Skipped database backup - nothing to do!")
 
         if job == 'files':
-            paths = config.get('files').get('paths') or list()
-
-            global check_sums
-            check_sums = config.get('files').get('checksums') or list()
-
             data = list()
 
-            for path in paths:
-                data.append(file_backup(path))
+            for path in config.file_path_list:
+                data.append(file_backup(path, config.backup_dir, config.checksums))
 
             if data:
                 # create table
@@ -238,8 +223,13 @@ def main(config):
 
         if job == 'gitlab':
             print("GitLab repository backup has been started!")
-            git_container = config.get('gitlab').get('container_name') or 'root_gitlab_1'
-            container = list(filter(lambda c: c.name == git_container, docker_env().containers.list()))[0]
+            try:
+                container = list(
+                    filter(lambda c: c.name == config.gitlab_container_name, docker_env().containers.list())
+                )[0]
+            except IndexError:
+                print_verbose("Warning: Gitlab Container not found!")
+                continue
 
             res = container.exec_run('gitlab-rake gitlab:backup:create')
 
@@ -309,11 +299,13 @@ if __name__ == '__main__':
 
     START = time()
 
+    json_object: dict = {}
     try:
-        global conf
-        conf = json.loads(open(CONFIG_FILE).read())
+        json_object: dict = json.loads(open(CONFIG_FILE).read())
     except ValueError:
         print(f'{CONFIG_FILE} does not contain valid json.')
         exit(1)
 
-    main(conf)
+    config_object = create_from_json(json_object)
+    config_object.verify_settings()
+    main(config_object)
