@@ -11,7 +11,7 @@ The script support's:
 You can execute the script `backup.py` with the following arguments:
 
 |    Argument    |                  Description                  | Default      |
-|:--------------:|:---------------------------------------------:|--------------|
+|----------------|-----------------------------------------------|--------------|
 | -v, --verbose  | Enable verbose output                         | False        |
 | -c, --config   | Set config file                               | .config.json |
 | -a, --all      | Create all possible backups                   | False        |
