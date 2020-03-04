@@ -126,9 +126,4 @@ Example:
 
 ## TODO / Roadmap
 * OffsideBackup: check how to store the passphrase for the private key in the config file - so that the user doesn't need to type it all the time.
-* OffsideBackup: check and fix DeprecationWarnings.
-  * CryptographyDeprecationWarning: Support for unsafe construction of public numbers from encoded data will be removed in a future version. 
-    Please use EllipticCurvePublicKey.from_encoded_point
-  self.curve, Q_S_bytes
-  * CryptographyDeprecationWarning: encode_point has been deprecated on EllipticCurvePublicNumbers and will be removed in a future version. 
-    Please use EllipticCurvePublicKey.public_bytes to obtain both compressed and uncompressed point encoding.
+* (@TheCataliasTNT2k) create config parser
