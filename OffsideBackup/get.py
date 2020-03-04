@@ -4,7 +4,7 @@
 # It will download the current backup using secure file transfer protocol.
 
 from argparse import ArgumentParser
-from datetime import date, time, datetime, timedelta
+from datetime import datetime
 from paramiko import SSHClient, AutoAddPolicy
 import os
 import json
@@ -77,8 +77,8 @@ def main(config):
             for entry in check_sum_file.readlines():
                 checksum, filepath = entry.split("\t")
                 filepath = os.path.basename(filepath.strip("\n"))
-                local_filepath = f'{local_path}/{os.path.basename(filepath.strip("\n"))}'
-                if not os.path.isdir(local_filepath):
+                local_filepath = f'{local_path}/{filepath}'
+                if not os.path.isfile(local_filepath):
                     print_verbose(f"There is a check sum for {filepath}, but the file does not exist")
                 if checksum != getattr(hashlib, best_available_method)(open(local_filepath, 'rb').read()).hexdigest():
                     print(f"Checksum of {filepath} is not correct!")
