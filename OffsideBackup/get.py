@@ -10,57 +10,72 @@ import os
 import json
 import hashlib
 
-CONFIG_FILE = ''
+from config import Config, create_from_json
 
 
-def print_verbose(msg):
+def print_verbose(msg: str) -> None:
     if VERBOSE:
         print(f"[{str(datetime.now().strftime('%H:%M:%S'))}] {msg}")
 
 
-def main(config):
-    hostname = config.get("server").get("hostname")
-    port = config.get("server").get("port") or 22
-    username = config.get("server").get("username") or 'backup'
-    key_file = config.get("server").get("keyfile")
+def check_date(date) -> bool:
+    ret = True
+    try:
+        datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        ret = False
+    return ret
 
-    if not hostname or not key_file:
-        print(f"Invalid configuration! Check: {CONFIG_FILE}")
-        exit(1)
 
-    print_verbose(f'Downloading backup from {username}@{hostname}:{port} with {key_file}')
+def main(config: Config) -> None:
+    print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
+                  f' with {config.ssh_key_file}')
 
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
-    ssh.connect(hostname, port=port, username=username, key_filename=key_file)
+    ssh.connect(config.ssh_hostname, port=config.ssh_port,
+                username=config.ssh_username, key_filename=config.ssh_key_file)
+
+    # backup location on the server (remote path)
+    server_path: str = config.server_location
+    if not server_path.endswith('/'):
+        server_path += "/"
 
     # list existing backups (from stdout)
-    existing_backups = ssh.exec_command("ls /home/backups")[1].readlines()
+    existing_backups = ssh.exec_command(f"ls -1 -d {server_path}*/ | xargs -n 1 basename")[1].readlines()
 
     # remove \n from list entries
     existing_backups = list(map(lambda s: s.strip(), existing_backups))
 
+    # remove non pybackup specific directories
+    existing_backups = list(filter(check_date, existing_backups))
+
+    if not existing_backups:
+        print(f'Error: Unable to find backups on {config.ssh_hostname}:{config.server_location}')
+        exit(1)
+
     # sort existing backups and get the directory name of the latest
     backup_date = sorted(existing_backups, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))[-1]
+
+    print_verbose(f'Downloading backup from {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
+                  f' from {config.server_location}')
 
     sftp = ssh.open_sftp()
 
     # local directory where the backup should be stored
-    local_path = config.get('local_location') or '/var/backups/{hostname}/'
+    local_path: str = config.local_location
+    if not os.path.isdir(local_path):
+        os.mkdir(local_path)
+
     if not local_path.endswith('/'):
         local_path += "/"
 
     local_path += backup_date
 
     # create local directory for the backup
-    if not os.path.exists(local_path):
+    if not os.path.isdir(local_path):
         os.mkdir(local_path)
-
-    # backup location on the server (remote path)
-    server_path = config.get('server_location') or '/var/backups/'
-    if not server_path.endswith('/'):
-        server_path += "/"
 
     server_path += backup_date
 
@@ -69,7 +84,7 @@ def main(config):
         sftp.get(f'{server_path}/{filename}', f'{local_path}/{filename}')
 
     # check check sums
-    methods = ["sha512", "sha384", "sha256", "sha224", "sha1", 'md5']
+    methods: list = ["sha512", "sha384", "sha256", "sha224", "sha1", 'md5']
     best_available_method = next((m for m in methods if os.path.isfile(f'{local_path}/{m}sum.txt')), None)
 
     if best_available_method:
@@ -95,21 +110,23 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
     VERBOSE = args.get('verbose') or False
 
-    CONFIG_FILE = args.get('config')[0] if args.get('config') else '.config.json'
+    config_file: str = args.get('config')[0] if args.get('config') else './.config.json'
 
-    if not os.path.isfile(CONFIG_FILE):
-        print(f"{CONFIG_FILE} is not a file!")
+    if not os.path.isfile(config_file):
+        print(f"{config_file} is not a file!")
         exit(1)
 
-    if not os.path.exists(CONFIG_FILE):
-        print(f"{CONFIG_FILE} not found!")
+    if not os.path.exists(config_file):
+        print(f"{config_file} not found!")
         exit(1)
 
+    json_object: dict = {}
     try:
-        global conf
-        conf = json.loads(open(CONFIG_FILE).read())
+        json_object: dict = json.loads(open(config_file).read())
     except ValueError:
-        print(f'{CONFIG_FILE} does not contain valid json.')
+        print(f'{config_file} does not contain valid json.')
         exit(1)
 
-    main(conf)
+    config_obj = create_from_json(json_object)
+    config_obj.verify_settings()
+    main(config_obj)
