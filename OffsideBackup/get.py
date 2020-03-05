@@ -5,7 +5,8 @@
 
 from argparse import ArgumentParser
 from datetime import datetime
-from paramiko import SSHClient, AutoAddPolicy
+from paramiko import SSHClient, AutoAddPolicy, RSAKey
+from paramiko.ssh_exception import BadAuthenticationType, AuthenticationException
 import os
 import json
 import hashlib
@@ -28,14 +29,27 @@ def check_date(date) -> bool:
 
 
 def main(config: Config) -> None:
-    print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
-                  f' with {config.ssh_key_file}')
-
     ssh = SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
-    ssh.connect(config.ssh_hostname, port=config.ssh_port,
-                username=config.ssh_username, key_filename=config.ssh_key_file)
+
+    if config.ssh_key_file:
+        print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
+                      f' with {config.ssh_key_file}')
+        pkey = RSAKey.from_private_key_file(config.ssh_key_file, password=config.ssh_passphrase)
+        ssh.connect(config.ssh_hostname, port=config.ssh_port,
+                    username=config.ssh_username, pkey=pkey)
+    else:
+        print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}')
+        try:
+            ssh.connect(config.ssh_hostname, port=config.ssh_port,
+                        username=config.ssh_username, password=config.ssh_password, allow_agent=False)
+        except BadAuthenticationType:
+            print("Error: Password authentication is disabled! Exiting...")
+            exit(1)
+        except AuthenticationException as e:
+            print("Error: Authentication failed! Exiting...")
+            exit(1)
 
     # backup location on the server (remote path)
     server_path: str = config.server_location
@@ -128,5 +142,5 @@ if __name__ == "__main__":
         exit(1)
 
     config_obj = create_from_json(json_object)
-    config_obj.verify_settings()
+    config_obj.validate()
     main(config_obj)

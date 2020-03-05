@@ -5,6 +5,7 @@
         "hostname": "",
         "port": "",
         "username": "",
+        "password": "",
         "keyfile": "",
         "passphrase": ""
     }

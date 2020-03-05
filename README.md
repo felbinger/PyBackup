@@ -101,10 +101,11 @@ The configuration file (by default it's `.config.json` does contain the followin
 | local_location          | Location where local copy of the backup should be stored.     | /var/backups/{hostname} |
 | server_location         | Location of the backup on the server                          | /var/backups/           |
 | server/hostname         | Hostname/IP address of the server                             |                         |
+| server/username         | Port of the ssh server.                                       | 22                      |
 | server/username         | Username for the User Account to copy the backup using scp.   | backup                  |
 | server/keyfile          | Private SSH key that should be used to authenticate           |                         |
 | server/passphrase       | Password for the private key                                  |                         |
-| server/password         | if you want to authenticate without ssh keys, add the password|                         ||
+| server/password         | Fallback option, if you want to authenticate without ssh keys |                         ||
 
 You can eighter use the Keyfile (and if the keyfile is secured using a passphrase) to authenticate, or the password for the user account. Make sure that the keyfile is added to the authorized hosts or that PasswordAuthentication is still enabled on your ssh server. 
 
@@ -125,5 +126,5 @@ Example:
 ```
 
 ## TODO / Roadmap
-* OffsideBackup: check how to store the passphrase for the private key in the config file - so that the user doesn't need to type it all the time.
-* (@TheCataliasTNT2k) create config parser
+* offside backup: implement dsa / ecdsa keys
+* (@TheCataliasTNT2k) create config parser for the actual backup script
