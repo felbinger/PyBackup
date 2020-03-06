@@ -125,6 +125,5 @@ Example:
 }
 ```
 
-## TODO / Roadmap
-* offside backup: implement dsa / ecdsa keys
+## TODO / Roadmap   
 * (@TheCataliasTNT2k) create config parser for the actual backup script

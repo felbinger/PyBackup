@@ -5,7 +5,7 @@
 
 from argparse import ArgumentParser
 from datetime import datetime
-from paramiko import SSHClient, AutoAddPolicy, RSAKey
+from paramiko import SSHClient, AutoAddPolicy, RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import BadAuthenticationType, AuthenticationException
 import os
 import json
@@ -35,8 +35,8 @@ def main(config: Config) -> None:
 
     if config.ssh_key_file:
         print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
-                      f' with {config.ssh_key_file}')
-        pkey = RSAKey.from_private_key_file(config.ssh_key_file, password=config.ssh_passphrase)
+                      f' with {config.ssh_key_type} key: {config.ssh_key_file}')
+        pkey = config.ssh_key_type["class"].from_private_key_file(config.ssh_key_file, password=config.ssh_passphrase)
         ssh.connect(config.ssh_hostname, port=config.ssh_port,
                     username=config.ssh_username, pkey=pkey)
     else:

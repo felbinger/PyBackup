@@ -1,6 +1,5 @@
-from paramiko import RSAKey
+from paramiko import RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import SSHException, PasswordRequiredException
-
 
 class Config:
     local_location: str = ""
@@ -9,6 +8,7 @@ class Config:
     ssh_port: int = 0
     ssh_username: str = ""
     ssh_password: str = ""
+    ssh_key_type: dict = dict()
     ssh_key_file: str = ""
     ssh_passphrase: str = ""
 
@@ -23,6 +23,7 @@ class Config:
         self.ssh_port = ssh_values.get("port") or None
         self.ssh_username = ssh_values.get("username") or None
         self.ssh_password = ssh_values.get("password") or None
+        #self.ssh_key_type = dict()
         self.ssh_key_file = ssh_values.get("keyfile") or None
         self.ssh_passphrase = ssh_values.get("passphrase") or None
 
@@ -65,14 +66,30 @@ class Config:
                       "It's a fallback method, but it's strongly recommended to enable key based authentication only!")
 
         if self.ssh_key_file:
-            # TODO implement other key types than rsa (DSA/ECDSA)
+            with open(self.ssh_key_file, "r") as f:
+                first_line = f.readline()
+                if 'RSA' in first_line:
+                    self.ssh_key_type["name"] = "RSA"
+                    self.ssh_key_type["class"] = RSAKey
+                elif 'DSA' in first_line:
+                    self.ssh_key_type["name"] = "DSS"  # dsa or dss?
+                    self.ssh_key_type["class"] = DSSKey
+                elif 'EC' in first_line:
+                    self.ssh_key_type["name"] = "ECDSA"
+                    self.ssh_key_type["class"] = ECDSAKey
+                elif 'OPENSSH' in first_line:
+                    self.ssh_key_type["name"] = "Ed25519"
+                    self.ssh_key_type["class"] = Ed25519Key
+                else:
+                    print("Warning: ${self.ssh_key_file} is not supported!")
+                    exit(1)
             try:
-                RSAKey.from_private_key_file(self.ssh_key_file, password=self.ssh_passphrase)
+                self.ssh_key_type["class"].from_private_key_file(self.ssh_key_file, password=self.ssh_passphrase)
             except PasswordRequiredException:
                 print(f'{self.ssh_key_file} is encrypted, Passphrase is not properly initialized!')
                 exit(1)
             except SSHException:
-                print(f'{self.ssh_key_file} is not a valid RSA private key file ' +
+                print(f'{self.ssh_key_file} is not a valid {self.ssh_key_type["name"]} private key file ' +
                       f'or you supplied the wrong password for the key!')
                 exit(1)
 
