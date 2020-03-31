@@ -1,20 +1,11 @@
 {
-    "backup_dir": "/home/user/Downloads/test",
+    "backup_dir": "",
     "database": [
         {
-            "container_name": "user_db_1",
-            "username": "root",
-            "password": "root",
+            "container_name": "",
+            "username": "",
+            "password": "",
             "databases": [
-                "mysql", "bookdb", "flaskbasic", "openmeetings"
-            ]
-        },
-        {
-            "container_name": "user_db2_1",
-            "username": "root",
-            "password": "root",
-            "databases": [
-                "mysql", "test"
             ]
         }
     ],
