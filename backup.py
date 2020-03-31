@@ -78,12 +78,17 @@ def sizeof(start):
 
 
 def docker_db_backup(container, username, password, database):
+    # create directory for backups of this container if it doesn't exist
+    if not os.path.isdir(f'{BACKUP_DIR}/{container.name}'):
+        os.mkdir(f'{BACKUP_DIR}/{container.name}/')
+
     # path where the backup should be stored
-    path = f'{BACKUP_DIR}/{database}.sql'
+    path = f'{BACKUP_DIR}/{container.name}/{database}.sql'
     # check if the backup of the database does already exist
     if os.path.exists(path):
         print_verbose(f'Backup of {database} database has been skipped!')
         return [
+            container.name,
             database,
             " ",
             f'{Fore.YELLOW}Skipped{Fore.RESET}'
@@ -102,6 +107,7 @@ def docker_db_backup(container, username, password, database):
         f.write(res.output)
 
     return [
+        container.name,
         database,
         convert_size(os.path.getsize(path)),
         f'{Fore.GREEN}OK{Fore.RESET}' if res.exit_code == 0 else
@@ -186,27 +192,31 @@ def main(config):
 
     for job in jobs:
         if job == 'database':
-            db_container_name = config.get('database').get('container_name') or 'root_db_1'
-            db_username = config.get('database').get('username') or 'backup'
-            db_password = config.get('database').get('password') or 'default_password'
-            databases = config.get('database').get('list') or ['mysql']
-
-            container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
             data = list()
+            db_backup_config: list = config.get('database')
+            for cfg in db_backup_config:
+                db_container_name = cfg.get('container_name') or 'root_db_1'
+                db_username = cfg.get('username') or 'backup'
+                db_password = cfg.get('password') or 'default_password'
+                databases = cfg.get('databases') or ['mysql']
 
-            for database in databases:
-                data.append(docker_db_backup(container, db_username, db_password, database))
+                container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
+
+                for database in databases:
+                    print("creating backup of", container.name, db_username,db_password, database)
+                    data.append(docker_db_backup(container, db_username, db_password, database))
 
             if data:
                 # create table
                 table = PrettyTable()
                 table.title = "Database Backup Status"
-                table.field_names = ["Database", "Size", "Status"]
+                table.field_names = ["Container", "Database", "Size", "Status"]
                 for row in data:
                     table.add_row(row)
+                table.align['Container'] = 'l'
                 table.align['Database'] = 'l'
                 table.align['Size'] = 'r'
-                table.sortby = 'Database'
+                table.sortby = 'Container'
                 print(table)
             else:
                 print("Skipped database backup - nothing to do!")

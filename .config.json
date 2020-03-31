@@ -1,12 +1,23 @@
 {
-    "backup_dir": "",
-    "database": {
-        "container_name": "",
-        "username": "",
-        "password": "",
-        "list": [
-        ]
-    },
+    "backup_dir": "/home/user/Downloads/test",
+    "database": [
+        {
+            "container_name": "user_db_1",
+            "username": "root",
+            "password": "root",
+            "databases": [
+                "mysql", "bookdb", "flaskbasic", "openmeetings"
+            ]
+        },
+        {
+            "container_name": "user_db2_1",
+            "username": "root",
+            "password": "root",
+            "databases": [
+                "mysql", "test"
+            ]
+        }
+    ],
     "gitlab": {
         "container_name": ""
     },
