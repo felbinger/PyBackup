@@ -203,7 +203,6 @@ def main(config):
                 container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
 
                 for database in databases:
-                    print("creating backup of", container.name, db_username,db_password, database)
                     data.append(docker_db_backup(container, db_username, db_password, database))
 
             if data:
