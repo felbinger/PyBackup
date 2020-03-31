@@ -38,13 +38,15 @@ Example:
 ```
 {
     "backup_dir": "",
-    "database": {
-        "container_name": "",
-        "username": "",
-        "password": "",
-        "list": [
-        ]
-    },
+    "database": [
+        {
+            "container_name": "",
+            "username": "",
+            "password": "",
+            "databases": [
+            ]
+        }
+    ],
     "gitlab": {
         "container_name": ""
     },
