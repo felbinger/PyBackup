@@ -82,7 +82,6 @@ def main(config: Config) -> None:
 
     # sort existing backups and get the directory name of the latest
     backup_date = sorted(existing_backups, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))[-1]
-    backup_date = "2020-04-01"
 
     print_verbose(f'Downloading backup from {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
                   f' from {config.server_location}')
