@@ -15,16 +15,6 @@ import hashlib
 from config import Config, create_from_json
 
 
-def listdir_r(sftp, remotedir):
-    for entry in sftp.listdir_attr(remotedir):
-        remotepath = remotedir + "/" + entry.filename
-        mode = entry.st_mode
-        if S_ISDIR(mode):
-            listdir_r(sftp, remotepath)
-        elif S_ISREG(mode):
-            print(remotepath)
-
-
 def print_verbose(msg: str) -> None:
     if VERBOSE:
         print(f"[{str(datetime.now().strftime('%H:%M:%S'))}] {msg}")
