@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from paramiko import SSHClient, AutoAddPolicy, RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import BadAuthenticationType, AuthenticationException
+from stat import S_ISDIR, S_ISREG
 import os
 import json
 import hashlib
@@ -31,14 +32,14 @@ def check_date(date) -> bool:
 def main(config: Config) -> None:
     ssh = SSHClient()
     ssh.load_system_host_keys()
+    # TODO don't do this, validate SSHFP on DNS
     ssh.set_missing_host_key_policy(AutoAddPolicy())
 
     if config.ssh_key_file:
         print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
                       f' with {config.ssh_key_type} key: {config.ssh_key_file}')
         pkey = config.ssh_key_type["class"].from_private_key_file(config.ssh_key_file, password=config.ssh_passphrase)
-        ssh.connect(config.ssh_hostname, port=config.ssh_port,
-                    username=config.ssh_username, pkey=pkey)
+        ssh.connect(config.ssh_hostname, port=config.ssh_port, username=config.ssh_username, pkey=pkey)
     else:
         print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}')
         try:
@@ -93,9 +94,21 @@ def main(config: Config) -> None:
 
     server_path += backup_date
 
-    for filename in list(filter(None, ssh.exec_command(f"ls {server_path}")[1].read().decode().split("\n"))):
-        print_verbose(f'- {server_path}/{filename} (remote) => {local_path}/{filename} (local)')
-        sftp.get(f'{server_path}/{filename}', f'{local_path}/{filename}')
+    backup_content = list()
+
+    def get_content(_sftp, _lst, path):
+        mode = _sftp.stat(path).st_mode
+        local_get_path = local_path + "/" + path.split(server_path)[1][1:]
+        if S_ISREG(mode):
+            print_verbose(f'- {path} (remote) => {local_get_path} (local)')
+            sftp.get(f'{path}', f'{local_get_path}')
+        elif S_ISDIR(mode):
+            for file in _sftp.listdir(path):
+                if not os.path.isdir(local_get_path):
+                    os.mkdir(local_get_path)
+                get_content(_sftp, _lst, f'{path}/{file}')
+
+    get_content(sftp, backup_content, server_path)
 
     # check check sums
     methods: list = ["sha512", "sha384", "sha256", "sha224", "sha1", 'md5']
