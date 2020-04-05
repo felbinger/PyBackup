@@ -13,6 +13,7 @@ import json
 import hashlib
 
 from config import Config, create_from_json
+from sshfp import DnssecPolicy
 
 
 def print_verbose(msg: str) -> None:
@@ -33,7 +34,8 @@ def main(config: Config) -> None:
     ssh = SSHClient()
     ssh.load_system_host_keys()
     # TODO don't do this, validate SSHFP on DNS
-    ssh.set_missing_host_key_policy(AutoAddPolicy())
+    ssh.set_missing_host_key_policy(DnssecPolicy())
+    #ssh.set_missing_host_key_policy(AutoAddPolicy())
 
     if config.ssh_key_file:
         print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
