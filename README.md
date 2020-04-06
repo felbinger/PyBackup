@@ -92,7 +92,7 @@ The script currently offers the two most used authentication methods (password, 
 ### Arguments
 |    Argument    |                  Description                  | Default      |
 |:--------------:|:---------------------------------------------:|--------------|
-| -v, --verbose  | Enable verbose output                         | False        |
+| -q, --quiet    | Disable verbose output / quiet mode           | False        |
 | -c, --config   | Set config file                               | .config.json ||
 
 ### Configuration
