@@ -5,9 +5,10 @@
 
 from argparse import ArgumentParser
 from datetime import datetime
-from paramiko import SSHClient, AutoAddPolicy, RSAKey, DSSKey, ECDSAKey, Ed25519Key
+from paramiko import SSHClient, RSAKey, DSSKey, ECDSAKey, Ed25519Key
 from paramiko.ssh_exception import BadAuthenticationType, AuthenticationException
 from stat import S_ISDIR, S_ISREG
+from fileinput import FileInput
 import os
 import json
 import hashlib
@@ -30,16 +31,41 @@ def check_date(date) -> bool:
     return ret
 
 
+def download(sftp, path, local_path, server_base_path):
+    mode = sftp.stat(path).st_mode
+    local_get_path = local_path + path.split(server_base_path)[1][1:]
+    # regular file
+    if S_ISREG(mode):
+        # check if local file exists
+        if os.path.isfile(local_get_path):
+            # check if remote and local file have the same size
+            if os.stat(local_get_path).st_size != sftp.stat(path).st_size:
+                # re-download file if size of remote and local is different
+                print_verbose(f'- {path} (remote) != {local_get_path} (local), exists but has a different file size!')
+                print_verbose(f'- {path} (remote) => {local_get_path} (local)')
+                sftp.get(f'{path}', f'{local_get_path}')
+            else:
+                # if the size is ok skip the download
+                print_verbose(f'- {path} (remote) == {local_get_path} (local), skipping!')
+        else:
+            print_verbose(f'- {path} (remote) => {local_get_path} (local)')
+            sftp.get(f'{path}', f'{local_get_path}')
+    elif S_ISDIR(mode):
+        # if the current path ends in a directory, create all sub directories
+        for file in sftp.listdir(path):
+            if not os.path.isdir(local_get_path):
+                os.mkdir(local_get_path)
+            download(sftp, path=f'{path}/{file}', local_path=local_path, server_base_path=server_base_path)
+
+
 def main(config: Config) -> None:
     ssh = SSHClient()
     ssh.load_system_host_keys()
-    # TODO don't do this, validate SSHFP on DNS
     ssh.set_missing_host_key_policy(DnssecPolicy())
-    #ssh.set_missing_host_key_policy(AutoAddPolicy())
 
     if config.ssh_key_file:
         print_verbose(f'Checking for backups on {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
-                      f' with {config.ssh_key_type} key: {config.ssh_key_file}')
+                      f' with {config.ssh_key_type["name"]} key: {config.ssh_key_file}')
         pkey = config.ssh_key_type["class"].from_private_key_file(config.ssh_key_file, password=config.ssh_passphrase)
         ssh.connect(config.ssh_hostname, port=config.ssh_port, username=config.ssh_username, pkey=pkey)
     else:
@@ -53,6 +79,8 @@ def main(config: Config) -> None:
         except AuthenticationException as e:
             print("Error: Authentication failed! Exiting...")
             exit(1)
+
+    sftp = ssh.open_sftp()
 
     # backup location on the server (remote path)
     server_path: str = config.server_location
@@ -74,11 +102,10 @@ def main(config: Config) -> None:
 
     # sort existing backups and get the directory name of the latest
     backup_date = sorted(existing_backups, key=lambda x: datetime.strptime(x, '%Y-%m-%d'))[-1]
+    server_path += backup_date
 
     print_verbose(f'Downloading backup from {config.ssh_username}@{config.ssh_hostname}:{config.ssh_port}' +
                   f' from {config.server_location}')
-
-    sftp = ssh.open_sftp()
 
     # local directory where the backup should be stored
     local_path: str = config.local_location
@@ -90,32 +117,27 @@ def main(config: Config) -> None:
 
     local_path += backup_date
 
+    if not local_path.endswith('/'):
+        local_path += "/"
+
     # create local directory for the backup
     if not os.path.isdir(local_path):
         os.mkdir(local_path)
 
-    server_path += backup_date
+    # download files, path is the starting point, server base path is for subtraction only
+    download(sftp=sftp, path=server_path, local_path=local_path, server_base_path=server_path)
 
-    backup_content = list()
+    methods: list = ["sha512", "sha384", "sha256", "sha224", "sha1", 'md5']
 
-    def get_content(_sftp, _lst, path):
-        mode = _sftp.stat(path).st_mode
-        local_get_path = local_path + "/" + path.split(server_path)[1][1:]
-        if S_ISREG(mode):
-            print_verbose(f'- {path} (remote) => {local_get_path} (local)')
-            sftp.get(f'{path}', f'{local_get_path}')
-        elif S_ISDIR(mode):
-            for file in _sftp.listdir(path):
-                if not os.path.isdir(local_get_path):
-                    os.mkdir(local_get_path)
-                get_content(_sftp, _lst, f'{path}/{file}')
-
-    get_content(sftp, backup_content, server_path)
+    # update path definitions to match local path
+    for method in methods:
+        if os.path.isfile(f'{local_path}/{method}sum.txt'):
+            with FileInput(f'{local_path}/{method}sum.txt', inplace=True, backup='.bak') as file:
+                for line in file:
+                    line.replace(server_path, local_path)
 
     # check check sums
-    methods: list = ["sha512", "sha384", "sha256", "sha224", "sha1", 'md5']
     best_available_method = next((m for m in methods if os.path.isfile(f'{local_path}/{m}sum.txt')), None)
-
     if best_available_method:
         with open(f'{local_path}/{best_available_method}sum.txt', 'r') as check_sum_file:
             for entry in check_sum_file.readlines():
@@ -132,12 +154,12 @@ def main(config: Config) -> None:
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('-v', '--verbose', help='verbose output', action="store_true")
+    parser.add_argument('-q', '--quiet', help='less verbose output', action="store_false")
     parser.add_argument('-c', '--config', help='config file', nargs=1)
 
     # get arguments
     args = vars(parser.parse_args())
-    VERBOSE = args.get('verbose') or False
+    VERBOSE = args.get('quiet')
 
     config_file: str = args.get('config')[0] if args.get('config') else './.config.json'
 
