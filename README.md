@@ -23,22 +23,48 @@ You can execute the script `backup.py` with the following arguments:
 ### Configuration
 The configuration file (by default it's `.config.json` does contain the following parameters:
 
-| Parameter               | Description                                                   | Default              |
-|-------------------------|---------------------------------------------------------------|----------------------|
-| backup_dir              | Location where backups get stored.                            | /var/backups/system/ |
-| database/container_name | Container name of the MySQL/MariaDB container                 | root_db_1            |
-| database/username       | Username for backup mysql user                                | backup               |
-| database/password       | Password for backup mysql user                                | default_password     |
-| database/list           | Databases that should get backed up                           | [mysql]              |
-| gitlab/container_name   | Container name of the GitLab container                        | root_gitlab_1        |
-| files/paths             | Paths that should be backed up                                |                      |
-| files/checksums         | Checksums that should be created for the file backup archives |                      ||
+| Parameter               | Description                                                    | Default              |
+|-------------------------|----------------------------------------------------------------|----------------------|
+| backup_dir              | Location where backups get stored.                             | /var/backups/system/ |
+| mysql/container_name    | Container name of the MySQL/MariaDB container                  | main_mariadb_1       |
+| mysql/username          | Username for backup mysql user                                 | backup               |
+| mysql/password          | Password for backup mysql user                                 | default_password     |
+| mysql/databases         | MySQL Databases that should get backed up                      | [mysql]              |
+| mongodb/container_name  | Container name of the MongoDB container                        | main_mongodb_1       |
+| mongodb/username        | Username for backup mongodb user. Leave empty to disable auth. | backup               |
+| mongodb/password        | Password for backup mongodb user. Leave empty to disable auth. | default_password     |
+| mongodb/databases       | MongoDB Databases that should get backed up                    | [admin]              |
+| postgres/container_name | Container name of the PostgreSQL container                     | main_postgres_1      |
+| postgres/username       | Username for backup postgres user. Leave empty to disable auth.| backup               |
+| postgres/password       | Password for backup postgres user. Leave empty to disable auth.| default_password     |
+| postgres/databases      | Postgres Databases that should get backed up                   | [postgres]           |
+| gitlab/container_name   | Container name of the GitLab container                         | main_gitlab_1        |
+| files/paths             | Paths that should be backed up                                 |                      |
+| files/checksums         | Checksums that should be created for the file backup archives  |                      ||
 
 Example:
 ```
 {
     "backup_dir": "",
-    "database": [
+    "mysql": [
+        {
+            "container_name": "main_mariadb_1",
+            "username": "",
+            "password": "",
+            "databases": [
+            ]
+        }
+    ],
+    "mongodb": [
+        {
+            "container_name": "",
+            "username": "",
+            "password": "",
+            "databases": [
+            ]
+        }
+    ],
+    "postgres": [
         {
             "container_name": "",
             "username": "",
@@ -129,3 +155,4 @@ Example:
 
 ## TODO / Roadmap   
 * (@TheCataliasTNT2k) create config parser for the actual backup script
+* PostgreSQL Backup

@@ -1,6 +1,24 @@
 {
     "backup_dir": "",
-    "database": [
+    "mysql": [
+        {
+            "container_name": "",
+            "username": "",
+            "password": "",
+            "databases": [
+            ]
+        }
+    ],
+    "mongodb": [
+        {
+            "container_name": "",
+            "username": "",
+            "password": "",
+            "databases": [
+            ]
+        }
+    ],
+    "postgres": [
         {
             "container_name": "",
             "username": "",

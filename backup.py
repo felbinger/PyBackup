@@ -77,42 +77,100 @@ def sizeof(start):
     return convert_size(size)
 
 
-def docker_db_backup(container, username, password, database):
-    # create directory for backups of this container if it doesn't exist
-    if not os.path.isdir(f'{BACKUP_DIR}/{container.name}'):
-        os.mkdir(f'{BACKUP_DIR}/{container.name}/')
-
+def docker_mysql_backup(container, username, password, database):
     # path where the backup should be stored
     path = f'{BACKUP_DIR}/{container.name}/{database}.sql'
     # check if the backup of the database does already exist
     if os.path.exists(path):
-        print_verbose(f'Backup of {database} database has been skipped!')
+        print_verbose(f'Backup of (mysql) {database} database has been skipped!')
         return [
+            "MySQL",
             container.name,
             database,
             " ",
             f'{Fore.YELLOW}Skipped{Fore.RESET}'
         ]
 
-    print_verbose(f'Backup of {database} database has been started!')
+    print_verbose(f'Backup of (mysql) {database} database has been started!')
     # execute the backup command
     res = container.exec_run(f'mysqldump --lock-tables -h localhost -u {username} -p{password} {database}')
 
     if res.exit_code != 0:
-        print_verbose(f'{Fore.RED}Database {database} backup was not successful.{Fore.RESET}')
-        print_verbose(f'- Status Code: {res.exit_code}')
-        print_verbose(f'- Stdout: {res.output.decode("utf-8")}')
+        print_verbose(f'{Fore.RED}MySQL Database {database} backup was not successful.{Fore.RESET}')
+        return [
+            "MySQL",
+            container.name,
+            database,
+            " ",
+            f'{Fore.RED}Failed ({res.exit_code}){Fore.RESET}'
+        ]
+    else:
+        with open(path, 'wb') as f:
+            f.write(res.output)
 
-    with open(path, 'wb') as f:
-        f.write(res.output)
+        return [
+            "MySQL",
+            container.name,
+            database,
+            convert_size(os.path.getsize(path)),
+            f'{Fore.GREEN}OK{Fore.RESET}'
+        ]
 
-    return [
-        container.name,
-        database,
-        convert_size(os.path.getsize(path)),
-        f'{Fore.GREEN}OK{Fore.RESET}' if res.exit_code == 0 else
-        f'{Fore.RED}Failed ({res.exit_code}){Fore.RESET}'
-    ]
+
+def docker_mongodb_backup(container, username, password, database):
+    # path where the backup should be stored
+    path = f'{BACKUP_DIR}/{container.name}/{database}.tar'
+    # check if the backup of the database does already exist
+    if os.path.exists(path):
+        print_verbose(f'Backup of (mongodb) {database} database has been skipped!')
+        return [
+            "MongoDB",
+            container.name,
+            database,
+            " ",
+            f'{Fore.YELLOW}Skipped{Fore.RESET}'
+        ]
+
+    container_workdir = '/data/transfer/'
+    if not container_workdir.endswith("/"):
+        container_workdir += "/"
+
+    print_verbose(f'Backup of (mongodb) {database} database has been started!')
+    # execute the backup command
+
+    cmd = f'mongodump -h localhost -d {database} --gzip -o {container_workdir}'
+    if username and password:
+        cmd += f' -u {username} -p{password}'
+    res = container.exec_run(cmd)
+
+    if res.exit_code != 0 or not len(res.output):
+        print_verbose(f'{Fore.RED}MongoDB Database {database} backup was not successful.{Fore.RESET}')
+        return [
+            "MongoDB",
+            container.name,
+            database,
+            " ",
+            f'{Fore.RED}Failed ({res.exit_code}){Fore.RESET}'
+        ]
+    else:
+        with open(f'{BACKUP_DIR}/{container.name}/{database}.tar', 'wb') as outfile:
+            for d in container.get_archive(f'{container_workdir}{database}')[0]:
+                outfile.write(d)
+
+        # clean up
+        container.exec_run(f'rm -r {container_workdir}{database}')
+
+        return [
+            "MongoDB",
+            container.name,
+            database,
+            convert_size(os.path.getsize(path)),
+            f'{Fore.GREEN}OK{Fore.RESET}'
+        ]
+
+
+def docker_postgres_backup(container, username, password, database):
+    pass
 
 
 def file_backup(path):
@@ -193,25 +251,62 @@ def main(config):
     for job in jobs:
         if job == 'database':
             data = list()
-            db_backup_config: list = config.get('database')
-            for cfg in db_backup_config:
-                db_container_name = cfg.get('container_name') or 'root_db_1'
+            mysql_backup_config: list = config.get('mysql') or list()
+            mongodb_backup_config: list = config.get('mongodb') or list()
+            postgres_backup_config: list = config.get('postgres') or list()
+            for cfg in mysql_backup_config:
+                db_container_name = cfg.get('container_name') or 'main_mariadb_1'
                 db_username = cfg.get('username') or 'backup'
-                db_password = cfg.get('password') or 'default_password'
+                db_password = cfg.get('password')
                 databases = cfg.get('databases') or ['mysql']
 
                 container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
 
+                # create directory for backups of this container if it doesn't exist
+                if not os.path.isdir(f'{BACKUP_DIR}/{container.name}'):
+                    os.mkdir(f'{BACKUP_DIR}/{container.name}/')
+
                 for database in databases:
-                    data.append(docker_db_backup(container, db_username, db_password, database))
+                    data.append(docker_mysql_backup(container, db_username, db_password, database))
+
+            for cfg in mongodb_backup_config:
+                db_container_name = cfg.get('container_name') or 'main_mongodb_1'
+                db_username = cfg.get('username')
+                db_password = cfg.get('password')
+                databases = cfg.get('databases') or ['admin']
+
+                container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
+
+                # create directory for backups of this container if it doesn't exist
+                if not os.path.isdir(f'{BACKUP_DIR}/{container.name}'):
+                    os.mkdir(f'{BACKUP_DIR}/{container.name}/')
+
+                for database in databases:
+                    data.append(docker_mongodb_backup(container, db_username, db_password, database))
+
+            for cfg in postgres_backup_config:
+                db_container_name = cfg.get('container_name') or 'main_postgres_1'
+                db_username = cfg.get('username') or 'backup'
+                db_password = cfg.get('password')
+                databases = cfg.get('databases') or ['postgres']
+
+                container = list(filter(lambda c: c.name == db_container_name, docker_env().containers.list()))[0]
+
+                # create directory for backups of this container if it doesn't exist
+                if not os.path.isdir(f'{BACKUP_DIR}/{container.name}'):
+                    os.mkdir(f'{BACKUP_DIR}/{container.name}/')
+
+                for database in databases:
+                    data.append(docker_postgres_backup(container, db_username, db_password, database))
 
             if data:
                 # create table
                 table = PrettyTable()
                 table.title = "Database Backup Status"
-                table.field_names = ["Container", "Database", "Size", "Status"]
+                table.field_names = ["Type", "Container", "Database", "Size", "Status"]
                 for row in data:
                     table.add_row(row)
+                table.align['Type'] = 'l'
                 table.align['Container'] = 'l'
                 table.align['Database'] = 'l'
                 table.align['Size'] = 'r'
@@ -247,7 +342,7 @@ def main(config):
 
         if job == 'gitlab':
             print("GitLab repository backup has been started!")
-            git_container = config.get('gitlab').get('container_name') or 'root_gitlab_1'
+            git_container = config.get('gitlab').get('container_name') or 'main_gitlab_1'
             container = list(filter(lambda c: c.name == git_container, docker_env().containers.list()))[0]
 
             res = container.exec_run('gitlab-rake gitlab:backup:create')
