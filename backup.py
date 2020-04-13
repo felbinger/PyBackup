@@ -199,7 +199,6 @@ def docker_postgres_backup(container, username, password, database):
         # cmd += f'export PGPASSWORD="{password}" '   # <-- should work, but export not found
     cmd += f'pg_dump -h localhost -U{username} {database}'
     res = container.exec_run(cmd)
-    print(res)
 
     if res.exit_code != 0:
         print_verbose(f'{Fore.RED}PostgreSQL Database {database} backup was not successful.{Fore.RESET}')
