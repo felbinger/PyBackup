@@ -1,0 +1,44 @@
+version: '3'
+services:
+  mariadb:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: SECRET_PASSWORD
+    volumes:
+      - "/srv/mariadb/data:/var/lib/mysql"
+      - "/srv/mariadb/transfer:/transfer"
+
+  mongodb:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: SECRET_PASSWORD
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/srv/mongodb/data:/data/db"
+
+  postgresql:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: SECRET_PASSWORD
+    volumes:
+      - "/srv/postgres:/var/lib/postgresql/data"
+
+  mongodb-insecure:
+    image: mongo
+    restart: always
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/srv/mongodb-insecure/data:/data/db"
+
+  postgresql-insecure:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - "/srv/postgres-insecure:/var/lib/postgresql/data"
+
