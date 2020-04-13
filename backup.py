@@ -170,7 +170,61 @@ def docker_mongodb_backup(container, username, password, database):
 
 
 def docker_postgres_backup(container, username, password, database):
-    pass
+    # path where the backup should be stored
+    path = f'{BACKUP_DIR}/{container.name}/{database}.sql'
+    # check if the backup of the database does already exist
+    if os.path.exists(path):
+        print_verbose(f'Backup of (postgresql) {database} database has been skipped!')
+        return [
+            "PostgreSQL",
+            container.name,
+            database,
+            " ",
+            f'{Fore.YELLOW}Skipped{Fore.RESET}'
+        ]
+
+    print_verbose(f'Backup of (postgresql) {database} database has been started!')
+
+    # https://www.postgresql.org/docs/current/libpq-pgpass.html
+    #if username and password:
+    #    container.exec_run(f'echo "localhost:*:{database}:{username}:{password}" | tee -a /root/.pgpass')
+
+    #print(container.exec_run('ls -a /root/'))
+    #print(container.exec_run('cat /root/.pgpass'))
+
+    # execute the backup command
+    cmd = ''
+    if password:
+        print("PostgreSQL doesn't work with Auth...")
+        # cmd += f'export PGPASSWORD="{password}" '   # <-- should work, but export not found
+    cmd += f'pg_dump -h localhost -U{username} {database}'
+    res = container.exec_run(cmd)
+    print(res)
+
+    if res.exit_code != 0:
+        print_verbose(f'{Fore.RED}PostgreSQL Database {database} backup was not successful.{Fore.RESET}')
+        return [
+            "PostgreSQL",
+            container.name,
+            database,
+            " ",
+            f'{Fore.RED}Failed ({res.exit_code}){Fore.RESET}'
+        ]
+    else:
+        with open(path, 'wb') as f:
+            f.write(res.output)
+
+        # clean up
+        #if username and password:
+        #    container.exec_run(f'rm /root/.pgpass')
+
+        return [
+            "PostgreSQL",
+            container.name,
+            database,
+            convert_size(os.path.getsize(path)),
+            f'{Fore.GREEN}OK{Fore.RESET}'
+        ]
 
 
 def file_backup(path):
@@ -286,7 +340,7 @@ def main(config):
 
             for cfg in postgres_backup_config:
                 db_container_name = cfg.get('container_name') or 'main_postgres_1'
-                db_username = cfg.get('username') or 'backup'
+                db_username = cfg.get('username') or 'postgres'
                 db_password = cfg.get('password')
                 databases = cfg.get('databases') or ['postgres']
 
