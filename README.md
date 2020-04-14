@@ -1,6 +1,6 @@
 # PyBackup
 
-PyBackup is a backup script for docker environments. The latest version with a few more features **requires Python 3.8**!
+PyBackup is a backup script for docker environments. The latest version, with a few more features, **requires Python 3.8**!
 The script support's:
 * simple file backups
 * mariadb/mysql, mongodb and postgres database backups
