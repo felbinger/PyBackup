@@ -40,7 +40,7 @@ class MongoDB:
         self.container = container
 
         # skip the creation of backup's that already exist
-        self.skip_existing = skip_existing
+        self.skip_existing = skip_existing or True
 
         # path where the backup should be stored
         date = datetime.now().strftime("%Y-%m-%d")

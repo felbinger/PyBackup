@@ -8,7 +8,7 @@ import os
 import json
 
 from config import Config, create_from_json
-from v2 import Printer, DatabaseResult, FileResult, MariaDB, MongoDB, PostgreSQL, GitLab, File, Checksums
+from helper import Printer, DatabaseResult, FileResult, MariaDB, MongoDB, PostgreSQL, GitLab, File, Checksums
 
 
 def main(config: Config, tasks: list):
