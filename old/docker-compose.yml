@@ -5,6 +5,8 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: SECRET_PASSWORD
+    ports:
+      - 3306:3306
     volumes:
       - "/srv/mariadb/data:/var/lib/mysql"
       - "/srv/mariadb/transfer:/transfer"
@@ -18,6 +20,7 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/srv/mongodb/data:/data/db"
+      - "/srv/mongodb/transfer:/data/transfer"
 
   postgresql:
     image: postgres
@@ -25,7 +28,17 @@ services:
     environment:
       POSTGRES_PASSWORD: SECRET_PASSWORD
     volumes:
-      - "/srv/postgres:/var/lib/postgresql/data"
+      - "/srv/postgres/data:/var/lib/postgresql/data"
+      - "/srv/postgres/transfer:/transfer"
+
+  mariadb_insecure:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+    volumes:
+      - "/srv/mariadb/data:/var/lib/mysql"
+      - "/srv/mariadb/transfer:/transfer"
 
   mongodb-insecure:
     image: mongo
@@ -33,6 +46,7 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/srv/mongodb-insecure/data:/data/db"
+      - "/srv/mongodb-insecure/transfer:/data/transfer"
 
   postgresql-insecure:
     image: postgres
@@ -40,5 +54,6 @@ services:
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
-      - "/srv/postgres-insecure:/var/lib/postgresql/data"
+      - "/srv/postgres-insecure/data:/var/lib/postgresql/data"
+      - "/srv/postgres-insecure/transfer:/transfer"
 

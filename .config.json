@@ -1,45 +1,56 @@
 {
-    "backup_dir": "",
-    "mysql": [
+    "backup_dir": "/home/user/Downloads/",
+    "mariadb": [
         {
-            "container_name": "",
-            "username": "",
-            "password": "",
+            "container_name": "user_mariadb_1",
+            "username": "root",
+            "password": "root",
             "databases": [
+                "mysql",
+                "spring"
+            ]
+        },
+        {
+            "container_name": "user_mariadb_insecure_1",
+            "databases": [
+                "mysql",
+                "teamspeak",
+                "nextcloud"
             ]
         }
     ],
     "mongodb": [
         {
-            "container_name": "",
-            "username": "",
-            "password": "",
+            "container_name": "user_mongodb_1",
+            "username": "root",
+            "password": "root",
             "databases": [
+                "admin"
+            ]
+        },
+        {
+            "container_name": "user_mongodb_insecure_1",
+            "databases": [
+                "admin"
             ]
         }
     ],
     "postgres": [
         {
-            "container_name": "",
-            "username": "",
-            "password": "",
+            "container_name": "user_postgres_1",
             "databases": [
+                "postgres",
+                "teamspeak",
+                "nextcloud"
             ]
         }
     ],
-    "gitlab": {
-        "container_name": ""
-    },
-    "files": {
-        "paths": [
-        ],
-        "checksums": [
-          "md5",
-          "sha1",
-          "sha224",
-          "sha256",
-          "sha384",
-          "sha512"
-        ]
-    }
+    "files": [
+        "/home/user/Pictures",
+        "/home/user/Music",
+        "/home/user/docker-compose.yml"
+    ],
+    "checksums": [
+        "sha256"
+    ]
 }

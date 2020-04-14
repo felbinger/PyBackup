@@ -1,0 +1,56 @@
+{
+    "backup_dir": "",
+    "mariadb": [
+        {
+            "container_name": "",
+            "host": "",
+            "port":"",
+            "username": "",
+            "password": "",
+            "databases": [
+            ],
+            "skip_existing": true
+        }
+    ],
+    "mongodb": [
+        {
+            "container_name": "",
+            "host": "",
+            "port":"",
+            "username": "",
+            "password": "",
+            "authentication_database": "",
+            "authentication_mechanism": "",
+            "databases": [
+            ],
+            "skip_existing": true
+        }
+    ],
+    "postgres": [
+        {
+            "container_name": "",
+            "host": "",
+            "port":"",
+            "username": "",
+            "password": "",
+            "databases": [
+            ],
+            "skip_existing": true
+        }
+    ],
+    "gitlab": {
+        "container_name": ""
+    },
+    "files": {
+        "paths": [
+        ]
+    },
+    "checksums": [
+        "md5",
+        "sha1",
+        "sha224",
+        "sha256",
+        "sha384",
+        "sha512"
+    ]
+}

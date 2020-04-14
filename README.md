@@ -13,6 +13,7 @@ You can execute the script `backup.py` with the following arguments:
 |    Argument    |                  Description                  | Default      |
 |----------------|-----------------------------------------------|--------------|
 | -v, --verbose  | Enable verbose output                         | False        |
+| -q, --quiet    | Enable quiet mode                             | False        |
 | -c, --config   | Set config file                               | .config.json |
 | -a, --all      | Create all possible backups                   | False        |
 | -d, --database | Create a backup of the MySQL/MariaDB database | False        |
@@ -21,92 +22,71 @@ You can execute the script `backup.py` with the following arguments:
 |                |                                               |              ||
 
 ### Configuration
-The configuration file (by default it's `.config.json` does contain the following parameters:
-
-| Parameter               | Description                                                    | Default              |
-|-------------------------|----------------------------------------------------------------|----------------------|
-| backup_dir              | Location where backups get stored.                             | /var/backups/system/ |
-| mysql/container_name    | Container name of the MySQL/MariaDB container                  | main_mariadb_1       |
-| mysql/username          | Username for backup mysql user                                 | backup               |
-| mysql/password          | Password for backup mysql user                                 | default_password     |
-| mysql/databases         | MySQL Databases that should get backed up                      | [mysql]              |
-| mongodb/container_name  | Container name of the MongoDB container                        | main_mongodb_1       |
-| mongodb/username        | Username for backup mongodb user. Leave empty to disable auth. | backup               |
-| mongodb/password        | Password for backup mongodb user. Leave empty to disable auth. | default_password     |
-| mongodb/databases       | MongoDB Databases that should get backed up                    | [admin]              |
-| postgres/container_name | Container name of the PostgreSQL container                     | main_postgres_1      |
-| postgres/username       | Username for backup postgres user. Leave empty to disable auth.| backup               |
-| postgres/password       | Password for backup postgres user. Leave empty to disable auth.| default_password     |
-| postgres/databases      | Postgres Databases that should get backed up                   | [postgres]           |
-| gitlab/container_name   | Container name of the GitLab container                         | main_gitlab_1        |
-| files/paths             | Paths that should be backed up                                 |                      |
-| files/checksums         | Checksums that should be created for the file backup archives  |                      ||
-
-Example:
-```
+The configuration file (by default it's `.config.json` does contain the following:
+```json5
 {
+    // directory where the backup should get stored
     "backup_dir": "",
-    "mysql": [
+    // MariaDB / MySQL database backup configuration
+    "mariadb": [
         {
-            "container_name": "main_mariadb_1",
+            "container_name": "",
+            "host": "",
+            "port":"",
             "username": "",
             "password": "",
             "databases": [
-            ]
+            ],
+            "skip_existing": true                 // skip backups if they already exist
         }
     ],
+    // MongoDB database backup configuration
     "mongodb": [
         {
             "container_name": "",
+            "host": "",
+            "port":"",
             "username": "",
             "password": "",
+            "authentication_database": "",        // default is admin, should work if you haven't changed to much.
+            "authentication_mechanism": "",       // default is SCRAM-SHA-1, should also work
             "databases": [
-            ]
+            ],
+            "skip_existing": true                 // skip backups if they already exist
         }
     ],
+    // PostgreSQL database backup configuration
     "postgres": [
         {
             "container_name": "",
+            "host": "",
+            "port":"",
             "username": "",
             "password": "",
             "databases": [
-            ]
+            ],
+            "skip_existing": true                 // skip backups if they already exist
         }
     ],
+    // GitLab repository backups
     "gitlab": {
         "container_name": ""
     },
+    // simple file backups
     "files": {
         "paths": [
-        ],
-        "checksums": [
-          "md5",
-          "sha1",
-          "sha224",
-          "sha256",
-          "sha384",
-          "sha512"
         ]
-    }
+    },
+    // checksum files that should be created
+    "checksums": [
+        "md5",
+        "sha1",
+        "sha224",
+        "sha256",
+        "sha384",
+        "sha512"
+    ]
 }
-```
-
-#### Checksums
-You can use the following values in the checksums list, other options will be ignored:
-* md5
-* sha1
-* sha224
-* sha256
-* sha384
-* sha512
-
-
-## Backup Check
-The file check.py contains a simple check if the backup was successful. You can use it for example in [monit](https://mmonit.com/monit/).
-Just add the following lines to you config (`/etc/monit/monitrc`):
-```
-check program backup with path check.py
-  if status != 0 then alert
 ```
 
 ## Offside Backup
@@ -155,4 +135,3 @@ Example:
 
 ## TODO / Roadmap   
 * (@TheCataliasTNT2k) create config parser for the actual backup script
-* PostgreSQL Backup
