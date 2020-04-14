@@ -49,7 +49,7 @@ class MongoDB:
         self.path: str = f'{path}/{date}/'
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
-        mongodb_path = f'{self.path}/{self.container.name}/' if container else f'{self.path}/mongodb/'
+        mongodb_path = f'{self.path}{self.container.name}/' if container else f'{self.path}mongodb/'
         if not os.path.isdir(mongodb_path):
             os.mkdir(mongodb_path)
 
@@ -63,7 +63,7 @@ class MongoDB:
             cmd = f'{self.dump_cmd} --db={database}'
             self.docker_exec(cmd) if self.container else self.exec(cmd)
 
-    # TODO test local backup
+    # TODO test local backup: not working
     def exec(self, cmd: str):
         backup_path = f'{self.path}/mongodb/{self.database}'
         if os.path.isdir(backup_path):

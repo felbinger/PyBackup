@@ -42,7 +42,7 @@ class PostgreSQL:
         self.path: str = f'{path}/{date}/'
         if not os.path.isdir(self.path):
             os.mkdir(self.path)
-        postgres_path = f'{self.path}/{self.container.name}/' if container else f'{self.path}/postgres/'
+        postgres_path = f'{self.path}{self.container.name}/' if container else f'{self.path}/postgres/'
         if not os.path.isdir(postgres_path):
             os.mkdir(postgres_path)
 
@@ -56,7 +56,7 @@ class PostgreSQL:
             cmd = f'{self.dump_cmd} --dbname={database}'
             self.docker_exec(cmd) if self.container else self.exec(cmd)
 
-    # TODO test local backup
+    # TODO test local backup: not working
     def exec(self, cmd: str):
         backup_path = f'{self.path}/postgres/{self.database}.sql'
         if self.skip_existing and os.path.isfile(backup_path):

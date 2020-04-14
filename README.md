@@ -3,7 +3,7 @@
 PyBackup is a backup script for docker environments.
 The script support's:
 * simple file backups
-* docker mysql database backups 
+* mariadb/mysql, mongodb and postgres database backups
 * gitlab repository backups.
 
 
@@ -133,5 +133,5 @@ Example:
 }
 ```
 
-## TODO / Roadmap   
-* (@TheCataliasTNT2k) create config parser for the actual backup script
+## TODO
+* write config validator
