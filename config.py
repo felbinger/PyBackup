@@ -6,15 +6,19 @@ class Config:
     def __init__(self, json: dict):
         self.backup_dir: str = json.get('backup_dir') or '/home/backups'
         self.mariadb: List[Config.MariaDB] = list()
-        for cfg in json.get('mariadb'):
-            self.mariadb.append(self.MariaDB(cfg))
+        if json.get('mariadb'):
+            for cfg in json.get('mariadb'):
+                self.mariadb.append(self.MariaDB(cfg))
         self.mongodb: List[Config.MongoDB] = list()
-        for cfg in json.get('mongodb'):
-            self.mongodb.append(self.MongoDB(cfg))
+        if json.get('mongodb'):
+            for cfg in json.get('mongodb'):
+                self.mongodb.append(self.MongoDB(cfg))
         self.postgres: List[Config.PostgreSQL] = list()
-        for cfg in json.get('postgres'):
-            self.postgres.append(self.PostgreSQL(cfg))
-        self.gitlab: dict = json.get('gitlab')
+        if json.get('postgres'):
+            for cfg in json.get('postgres'):
+                self.postgres.append(self.PostgreSQL(cfg))
+        if json.get('gitlab'):
+            self.gitlab = self.GitLab(json.get('gitlab'))
         self.files: dict = json.get('files')
         self.checksums: dict = json.get('checksums') or list()
 
@@ -60,6 +64,10 @@ class Config:
             self.password: str = json.get('password')
             self.databases: list = json.get('databases') or ['postgres']
             self.skip_existing: bool = json.get('skip_existing') or True
+
+    class GitLab:
+        def __init__(self, json: dict):
+            self.container_name = json.get('container_name') or 'main_gitlab_1'
 
 
 def create_from_json(json: dict) -> Config:

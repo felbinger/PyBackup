@@ -68,10 +68,11 @@ def main(config: Config, tasks: list):
                 File(src=file, path=config.backup_dir).backup()
 
         elif task == 'gitlab' and config.gitlab:
-            git_container = config.gitlab.get('container_name') or 'main_gitlab_1'
-            container = list(filter(lambda c: c.name == git_container, docker_env().containers.list()))
-            if container:
-                GitLab(container[0]).backup()
+            container = list(filter(lambda c: c.name == config.gitlab.container_name, docker_env().containers.list()))
+            if not container:
+                Printer.print(f'GitLab Container {config.gitlab.container_name} does not exist. Skipping!', 2)
+                continue
+            GitLab(container[0]).backup()
 
     # Generate Checksums
     checksums = Checksums(path=config.backup_dir)
