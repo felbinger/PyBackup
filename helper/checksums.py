@@ -24,15 +24,18 @@ class Checksums:
     def generate_all(self):
         cl = ChecksumLib()
 
+        for method in self.methods:
+            cf = self.path / f'{method}sum.txt'
+            if cf.exists():
+                logger.info("File '%s' already exists but will be removed", cf)
+                cf.unlink()
+
         for file in self.path.rglob("*"):
             if not file.is_file():
                 continue
             for method in self.methods:
                 cf = self.path / f'{method}sum.txt'
-                if cf.exists():
-                    logger.info("File '%s' already exists but will be removed", cf)
-                    cf.unlink()
-                with (self.path / f'{method}sum.txt').open('a') as f:
+                with cf.open('a') as f:
                     c = cl.get_checksum_file(file, method)
                     f.write(f'{c}\t{file}\n')
 

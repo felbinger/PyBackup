@@ -12,9 +12,15 @@ from fileinput import FileInput
 import os
 import json
 import hashlib
+import logging
 
+from pathlib import Path
 from config import Config, create_from_json
-from sshfp import DnssecPolicy
+from .sshfp import DnssecPolicy
+from ..helper.file.checksum import ChecksumLib
+
+
+logger = logging.getLogger(__name__)
 
 
 def print_verbose(msg: str) -> None:
@@ -143,13 +149,13 @@ def main(config: Config) -> None:
             for entry in check_sum_file.readlines():
                 checksum, filepath = entry.split("\t")
                 filepath = os.path.basename(filepath.strip("\n"))
-                local_filepath = f'{local_path}/{filepath}'
+                local_filepath = Path(local_path) / filepath
                 if not os.path.isfile(local_filepath):
-                    print_verbose(f"There is a check sum for {filepath}, but the file does not exist")
-                if checksum != getattr(hashlib, best_available_method)(open(local_filepath, 'rb').read()).hexdigest():
-                    print(f"Checksum of {filepath} is not correct!")
+                    logger.warning(f"There is a check sum for %s, but the file does not exist", local_filepath)
+                if not ChecksumLib.get_checksum_file(local_filepath) == checksum:
+                    logger.warning(f"Checksum of  is not correct!" % filepath)
     else:
-        print_verbose("Unable to find check sums, skipping integrity check!")
+        logger.warning("Unable to find check sums, skipping integrity check!")
 
 
 if __name__ == "__main__":
