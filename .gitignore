@@ -2,3 +2,6 @@
 __pycache__
 morpheus.json
 test.json
+
+pythonenv/
+venv/
