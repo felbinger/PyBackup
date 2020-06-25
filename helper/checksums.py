@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Checksums:
 
-    def __init__(self, path: str = '/home/backups', methods: list = ['sha256', "Test"]):
+    def __init__(self, path: str = '/home/backups', methods: list = ['sha256']):
         self.methods = Checksums._check_methods(methods)
 
         # path where the backup should be stored
