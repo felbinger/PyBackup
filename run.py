@@ -6,9 +6,15 @@ from time import time
 from docker import from_env as docker_env
 import os
 import json
+import platform
+import logging
 
 from config import Config, create_from_json
 from helper import Printer, DatabaseResult, FileResult, MariaDB, MongoDB, PostgreSQL, GitLab, File, Checksums
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
 
 def main(config: Config, tasks: list):
@@ -123,7 +129,7 @@ if __name__ == '__main__':
         parser.print_help()
         exit(0)
 
-    if os.geteuid() != 0:
+    if platform.system() != "Windows" and os.geteuid() != 0:
         print("You need to have elevated privileges to run this script!")
         exit(1)
 

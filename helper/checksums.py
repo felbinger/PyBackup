@@ -1,44 +1,48 @@
-from datetime import datetime
-import os
-import hashlib
+import logging
 
-from . import Printer
+from datetime import datetime
+from pathlib import Path
+
+from .file.checksum import ChecksumLib
+
+
+logger = logging.getLogger(__name__)
 
 
 class Checksums:
+
     def __init__(self, path: str = '/home/backups', methods: list = ['sha256']):
-        self.methods = methods
-        Checksums._check_methods(self.methods)
+        self.methods = Checksums._check_methods(methods)
 
         # path where the backup should be stored
         date = datetime.now().strftime("%Y-%m-%d")
-        if path.endswith("/"):
-            path = path[:-1]
-        self.path: str = f'{path}/{date}/'
-        if not os.path.isdir(self.path):
-            os.mkdir(self.path)
+        self.path: Path = Path(path) / date
+        if not self.path.exists():
+            logger.info("Create backup folder")
+            self.path.mkdir()
 
     def generate_all(self):
-        for method in self.methods:
-            filename = f'{self.path[:-1]}/{method}sum.txt'
-            if os.path.isfile(filename):
-                os.remove(filename)
-        for subdir, dirs, files in os.walk(self.path[:-1]):
-            for filename in files:
-                self.generate(f'{subdir}/{filename}')
+        cl = ChecksumLib()
 
-    def generate(self, path):
-        if Checksums._check_methods(self.methods):
+        for method in self.methods:
+            cf = self.path / f'{method}sum.txt'
+            if cf.exists():
+                logger.info("File '%s' already exists but will be removed", cf)
+                cf.unlink()
+
+        for file in self.path.rglob("*"):
+            if not file.is_file():
+                continue
             for method in self.methods:
-                with open(f'{self.path[:-1]}/{method}sum.txt', 'a') as f:
-                    generated_hash = getattr(hashlib, method)(open(path, 'rb').read()).hexdigest()
-                    f.write(f'{generated_hash}\t{path}\n')
+                cf = self.path / f'{method}sum.txt'
+                with cf.open('a') as f:
+                    c = cl.get_checksum_file(file, method)
+                    f.write(f'{c}\t{file}\n')
 
     # check if the check sums from the config file are all valid method names from the hashlib module
     @staticmethod
-    def _check_methods(lst):
-        allow = ("md5", "sha1", "sha224", "sha384", "sha256", "sha512")
-        ret = not any(method not in allow for method in lst)
-        if not ret:
-            Printer.print(f"Invalid checksum method(s): {', '.join(set(lst).difference(set(allow)))}")
-        return ret
+    def _check_methods(methods: list) -> set:
+        valid = ChecksumLib.algorithms_available() & set(methods)
+        if len(valid) < len(methods):
+            logger.warning("Invalid checksum method(s): %s", ",".join(set(methods) - valid))
+        return valid
