@@ -2,6 +2,7 @@
 __pycache__
 morpheus.json
 test.json
+local-docker-compose.yml
 
 pythonenv/
 venv/
